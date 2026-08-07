@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#071b2f">
   <title>Personal Stack Tracker</title>
   <link rel="stylesheet" href="styles.css">
-  <style>.titration-fields{border:1px solid #dce2e7;border-radius:10px;padding:14px;margin:0}.titration-fields legend{padding:0 7px;font-size:12px;font-weight:900;color:#f47b20;letter-spacing:.08em;text-transform:uppercase}.titration-fields[hidden]{display:none}</style>
+  <style>.titration-fields{border:1px solid #dce2e7;border-radius:10px;padding:14px;margin:0}.titration-fields legend{padding:0 7px;font-size:12px;font-weight:900;color:#f47b20;letter-spacing:.08em;text-transform:uppercase}.titration-fields[hidden]{display:none}.titration-fields label:has(input[type=radio]){display:flex;align-items:center;gap:8px;margin:7px 0}.titration-fields input[type=radio]{display:inline-block;width:auto;margin:0}</style>
 </head>
 <body>
   <header class="hero">
@@ -62,7 +62,7 @@
         <label>Reconstitution (mL)
           <select id="reconMl"><option value="0.5">0.5 mL</option><option value="1">1 mL</option><option value="1.5">1.5 mL</option><option value="2">2 mL</option><option value="2.5">2.5 mL</option><option value="3">3 mL</option></select>
         </label>
-        <label>Number of prepared vials<input id="vialCount" type="number" min="1" step="1" value="1" required></label>
+        <label>Starting vials on hand<input id="vialCount" type="number" min="1" step="1" value="1" required></label>
         <label>Dose unit
           <select id="doseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select>
         </label>
@@ -75,6 +75,12 @@
         <label>Protocol type
           <select id="protocolType"><option value="fixed">Fixed dose</option><option value="titration">Titration to maintenance</option></select>
         </label>
+        <fieldset class="wide titration-fields">
+          <legend>People using this vial</legend>
+          <label><input type="radio" name="sharedProtocol" value="1" checked> One person</label>
+          <label><input type="radio" name="sharedProtocol" value="2"> Shared protocol — spouse takes the same dose</label>
+          <small>A shared protocol shows one dose event but removes two doses from the vial and doubles total protocol requirements.</small>
+        </fieldset>
         <label class="wide">Weekly dose pattern
           <input id="dosePattern" required placeholder="Example: 3, 3, 4">
           <small id="patternHelp">One amount for each dose in the week. Use one number for the same dose every time.</small>
@@ -120,6 +126,7 @@
       <div class="metrics">
         <div><span>Vial remaining</span><strong class="vial-left"></strong></div>
         <div><span>Cycle remaining</span><strong class="cycle-left"></strong></div>
+        <div><span>Protocol coverage</span><strong class="coverage"></strong></div>
       </div>
       <div class="progress-row"><span class="week-label"></span><span class="shot-label"></span></div>
       <div class="progress-track"><div class="progress-fill"></div></div>
@@ -134,6 +141,6 @@
     </article>
   </template>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
