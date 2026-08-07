@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#071b2f">
   <title>Personal Stack Tracker</title>
   <link rel="stylesheet" href="styles.css">
+  <style>.titration-fields{border:1px solid #dce2e7;border-radius:10px;padding:14px;margin:0}.titration-fields legend{padding:0 7px;font-size:12px;font-weight:900;color:#f47b20;letter-spacing:.08em;text-transform:uppercase}.titration-fields[hidden]{display:none}</style>
 </head>
 <body>
   <header class="hero">
@@ -66,10 +67,23 @@
             <option value="each">Each component in blend</option>
           </select>
         </label>
+        <label>Protocol type
+          <select id="protocolType"><option value="fixed">Fixed dose</option><option value="titration">Titration to maintenance</option></select>
+        </label>
         <label class="wide">Weekly dose pattern
           <input id="dosePattern" required placeholder="Example: 3, 3, 4">
-          <small>One amount for each dose in the week. Use “1” for the same 1 mg dose every time.</small>
+          <small id="patternHelp">One amount for each dose in the week. Use one number for the same dose every time.</small>
         </label>
+        <fieldset id="titrationFields" class="wide titration-fields" hidden>
+          <legend>Titration schedule</legend>
+          <div class="form-grid">
+            <label>Starter dose<input id="starterDose" type="number" min="0.001" step="any"></label>
+            <label>Weeks on starter dose<input id="starterWeeks" type="number" min="1" max="52" step="1" value="4"></label>
+            <label>Increase by<input id="doseIncrease" type="number" min="0.001" step="any"></label>
+            <label>Increase every (weeks)<input id="increaseEveryWeeks" type="number" min="1" max="52" step="1" value="4"></label>
+          </div>
+          <small>The weekly dose pattern above is the full maintenance dose. Once reached, the card displays only the maintenance dose.</small>
+        </fieldset>
         <label id="componentCountLabel" hidden>Number of components<input id="componentCount" type="number" min="2" max="10" step="1" value="2"></label>
         <label>Times taken per week<input id="timesPerWeek" type="number" min="1" max="21" step="1" required></label>
         <label>Cycle length (weeks)<input id="cycleWeeks" type="number" min="1" max="104" step="1" required></label>
@@ -95,7 +109,7 @@
       </div>
       <div class="warning" hidden></div>
       <div class="dose-panel">
-        <p>NEXT DOSE</p><strong class="next-dose"></strong><span class="draw-units"></span>
+        <p class="dose-stage">NEXT DOSE</p><strong class="next-dose"></strong><span class="draw-units"></span>
         <button class="taken-button">✓ Taken</button>
       </div>
       <div class="metrics">
@@ -115,6 +129,6 @@
     </article>
   </template>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
