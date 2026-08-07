@@ -19,9 +19,18 @@ function totalDoseMg(amount, unit, doseBasis='total', componentCount=1){
 function nice(n, max=3){ return Number(n.toFixed(max)).toString(); }
 function dosesTotal(item){ return item.cycleWeeks * item.timesPerWeek; }
 function cycleTaken(item){ return Math.min(item.startCompleted + item.logs.length, dosesTotal(item)); }
+function scheduledDose(item){
+  const taken=cycleTaken(item), week=Math.min(item.cycleWeeks,Math.floor(taken/item.timesPerWeek)+1);
+  const maintenance=item.dosePattern[taken%item.dosePattern.length];
+  if(item.protocolType!=='titration') return {amount:maintenance,stage:'NEXT DOSE',maintenance:true};
+  const starter=Number(item.starterDose), starterWeeks=Number(item.starterWeeks), every=Number(item.increaseEveryWeeks), increase=Number(item.doseIncrease);
+  if(week<=starterWeeks) return {amount:Math.min(starter,maintenance),stage:`STARTER DOSE · WEEK ${week}`,maintenance:starter>=maintenance};
+  const steps=Math.floor((week-starterWeeks-1)/every)+1;
+  const amount=Math.min(maintenance,starter+(steps*increase));
+  return {amount,stage:amount>=maintenance?'MAINTENANCE DOSE':`TITRATION DOSE · WEEK ${week}`,maintenance:amount>=maintenance};
+}
 function nextDose(item){
-  const pattern = item.dosePattern;
-  return pattern[cycleTaken(item) % pattern.length];
+  return scheduledDose(item).amount;
 }
 function shotsInVial(item){
   const doseMg = totalDoseMg(nextDose(item),item.doseUnit,item.doseBasis,item.componentCount);
@@ -44,12 +53,13 @@ function renderCard(item){
   const card = $('#cardTemplate').content.firstElementChild.cloneNode(true);
   card.dataset.id = item.id;
   const taken = cycleTaken(item), total = dosesTotal(item), remaining = Math.max(0,total-taken);
-  const dose = nextDose(item), doseMg = totalDoseMg(dose,item.doseUnit,item.doseBasis,item.componentCount);
+  const scheduled=scheduledDose(item), dose=scheduled.amount, doseMg = totalDoseMg(dose,item.doseUnit,item.doseBasis,item.componentCount);
   const concentration = item.vialMg / item.reconMl;
   const units = (doseMg / concentration) * 100;
   const shots = shotsInVial(item);
   $('h3',card).textContent = item.product;
   $('.timing',card).textContent = item.timing || `${item.timesPerWeek}× weekly`;
+  $('.dose-stage',card).textContent=scheduled.stage;
   const doseSuffix=item.doseBasis==='each'?` each × ${item.componentCount}`:'';
   $('.next-dose',card).textContent = remaining ? `${nice(dose)} ${item.doseUnit}${doseSuffix}` : 'Cycle complete';
   $('.draw-units',card).textContent = remaining ? `${nice(units,1)} units on a U-100 syringe` : 'No scheduled doses remaining';
@@ -95,22 +105,29 @@ function handleAction(action,id,card){
 
 function openDialog(item=null){
   form.reset(); $('#editId').value=item?.id||''; $('#dialogTitle').textContent=item?'Edit protocol':'Add to stack';
-  $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2;
+  $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2; $('#protocolType').value='fixed'; $('#starterWeeks').value=4; $('#increaseEveryWeeks').value=4;
   if(item){
     $('#product').value=item.product; $('#vialMg').value=item.vialMg; $('#reconMl').value=item.reconMl; $('#vialCount').value=item.unopenedVials+1;
-    $('#doseUnit').value=item.doseUnit; $('#doseBasis').value=item.doseBasis||'total'; $('#componentCount').value=item.componentCount||2; $('#dosePattern').value=item.dosePattern.join(', '); $('#timesPerWeek').value=item.timesPerWeek; $('#cycleWeeks').value=item.cycleWeeks;
+    $('#doseUnit').value=item.doseUnit; $('#doseBasis').value=item.doseBasis||'total'; $('#componentCount').value=item.componentCount||2; $('#protocolType').value=item.protocolType||'fixed'; $('#starterDose').value=item.starterDose||''; $('#starterWeeks').value=item.starterWeeks||4; $('#doseIncrease').value=item.doseIncrease||''; $('#increaseEveryWeeks').value=item.increaseEveryWeeks||4; $('#dosePattern').value=item.dosePattern.join(', '); $('#timesPerWeek').value=item.timesPerWeek; $('#cycleWeeks').value=item.cycleWeeks;
     $('#currentWeek').value=currentWeek(item); $('#takenThisWeek').value=cycleTaken(item)%item.timesPerWeek; $('#timing').value=item.timing;
   }
   updatePreview(); dialog.showModal();
 }
 function parsePattern(){ return $('#dosePattern').value.split(',').map(v=>Number(v.trim())).filter(v=>v>0); }
 function updatePreview(){
-  const vial=Number($('#vialMg').value), recon=Number($('#reconMl').value), pattern=parsePattern(), unit=$('#doseUnit').value, basis=$('#doseBasis').value, count=Number($('#componentCount').value)||2;
+  const vial=Number($('#vialMg').value), recon=Number($('#reconMl').value), pattern=parsePattern(), unit=$('#doseUnit').value, basis=$('#doseBasis').value, count=Number($('#componentCount').value)||2, isTitration=$('#protocolType').value==='titration';
   $('#componentCountLabel').hidden=basis!=='each';
+  $('#titrationFields').hidden=!isTitration;
+  $('#patternHelp').textContent=isTitration?'Enter the full maintenance dose. Titration will build to this amount.':'One amount for each dose in the week. Use one number for the same dose every time.';
   if(!vial||!recon||!pattern.length){ $('#dosePreview').textContent='Enter vial, reconstitution and dose details to calculate the draw.'; return; }
   const conc=vial/recon, draws=pattern.map(d=>nice(totalDoseMg(d,unit,basis,count)/conc*100,1));
   const explanation=basis==='each'?` (${nice(pattern[0])} ${unit} × ${count} components)`:'';
-  $('#dosePreview').innerHTML=`<strong>${nice(conc)} mg/mL</strong> · Weekly draw pattern: <strong>${draws.join(' / ')} units</strong>${explanation} on a U-100 syringe.`;
+  let titration='';
+  if(isTitration){
+    const start=Number($('#starterDose').value), weeks=Number($('#starterWeeks').value), increase=Number($('#doseIncrease').value), every=Number($('#increaseEveryWeeks').value);
+    if(start&&weeks&&increase&&every) titration=`<br>Starts at <strong>${nice(start)} ${unit}</strong> for ${weeks} week${weeks===1?'':'s'}, then increases ${nice(increase)} ${unit} every ${every} week${every===1?'':'s'} until maintenance.`;
+  }
+  $('#dosePreview').innerHTML=`<strong>${nice(conc)} mg/mL</strong> · Maintenance draw: <strong>${draws.join(' / ')} units</strong>${explanation} on a U-100 syringe.${titration}`;
 }
 
 form.addEventListener('submit',e=>{
@@ -118,10 +135,14 @@ form.addEventListener('submit',e=>{
   const pattern=parsePattern(), times=Number($('#timesPerWeek').value), week=Number($('#currentWeek').value), thisWeek=Number($('#takenThisWeek').value);
   if(!pattern.length) return alert('Enter at least one valid dose.');
   if(pattern.length!==1 && pattern.length!==times) return alert('Use one repeating dose, or enter one dose amount for each weekly dose.');
+  const protocolType=$('#protocolType').value;
+  if(protocolType==='titration' && pattern.length!==1) return alert('Titration protocols require one repeating maintenance dose.');
+  if(protocolType==='titration' && (!Number($('#starterDose').value)||!Number($('#starterWeeks').value)||!Number($('#doseIncrease').value)||!Number($('#increaseEveryWeeks').value))) return alert('Complete all titration schedule fields.');
+  if(protocolType==='titration' && Number($('#starterDose').value)>=pattern[0]) return alert('Starter dose must be lower than the maintenance dose.');
   if(thisWeek>=times) return alert('Already taken this week must be less than the number taken per week.');
   const id=$('#editId').value, existing=id?getItem(id):null, vialMg=Number($('#vialMg').value), vialCount=Number($('#vialCount').value);
   const logs=existing?.logs??[], requestedCompleted=(week-1)*times+thisWeek;
-  const values={id:id||uid(),product:$('#product').value.trim(),vialMg,reconMl:Number($('#reconMl').value),unopenedVials:Math.max(0,vialCount-1),doseUnit:$('#doseUnit').value,doseBasis:$('#doseBasis').value,componentCount:$('#doseBasis').value==='each'?Number($('#componentCount').value):1,dosePattern:pattern,timesPerWeek:times,cycleWeeks:Number($('#cycleWeeks').value),startCompleted:Math.max(0,requestedCompleted-logs.length),timing:$('#timing').value.trim(),remainingMg:existing?.remainingMg??vialMg,logs};
+  const values={id:id||uid(),product:$('#product').value.trim(),vialMg,reconMl:Number($('#reconMl').value),unopenedVials:Math.max(0,vialCount-1),doseUnit:$('#doseUnit').value,doseBasis:$('#doseBasis').value,componentCount:$('#doseBasis').value==='each'?Number($('#componentCount').value):1,protocolType,starterDose:protocolType==='titration'?Number($('#starterDose').value):null,starterWeeks:protocolType==='titration'?Number($('#starterWeeks').value):null,doseIncrease:protocolType==='titration'?Number($('#doseIncrease').value):null,increaseEveryWeeks:protocolType==='titration'?Number($('#increaseEveryWeeks').value):null,dosePattern:pattern,timesPerWeek:times,cycleWeeks:Number($('#cycleWeeks').value),startCompleted:Math.max(0,requestedCompleted-logs.length),timing:$('#timing').value.trim(),remainingMg:existing?.remainingMg??vialMg,logs};
   if(existing) Object.assign(existing,values); else state.items.push(values);
   saveState(); dialog.close();
 });
