@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071b2f">
+  <title>Personal Stack Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">THAT PEP LAB</p>
+      <h1>Personal Stack Tracker</h1>
+      <p class="subtitle">Vials, doses, schedules and cycle progress—kept on this device.</p>
+    </div>
+    <button id="addStackButton" class="primary">+ Add to stack</button>
+  </header>
+
+  <main>
+    <section id="summary" class="summary" aria-label="Stack summary"></section>
+
+    <section class="section-heading">
+      <div>
+        <p class="eyebrow">TODAY</p>
+        <h2>Your active stack</h2>
+      </div>
+      <div class="toolbar">
+        <button id="exportButton" class="quiet">Export backup</button>
+        <label class="quiet file-button">Import backup<input id="importInput" type="file" accept="application/json"></label>
+      </div>
+    </section>
+
+    <section id="emptyState" class="empty">
+      <div class="empty-icon">+</div>
+      <h2>Build your personal stack</h2>
+      <p>Add a product, enter the vial and reconstitution details, then set where you are in the protocol.</p>
+      <button class="primary" data-open-modal>Build my stack</button>
+    </section>
+    <section id="stackGrid" class="stack-grid"></section>
+  </main>
+
+  <dialog id="stackDialog">
+    <form id="stackForm" method="dialog">
+      <div class="dialog-head">
+        <div><p class="eyebrow">PROTOCOL SETUP</p><h2 id="dialogTitle">Add to stack</h2></div>
+        <button type="button" class="icon-button" data-close-modal aria-label="Close">×</button>
+      </div>
+
+      <input id="editId" type="hidden">
+      <div class="form-grid">
+        <label class="wide">Product
+          <input id="product" list="products" required placeholder="Select or type a product">
+          <datalist id="products"></datalist>
+        </label>
+
+        <label>Vial strength (mg)<input id="vialMg" type="number" min="0.001" step="any" required></label>
+        <label>Reconstitution (mL)<input id="reconMl" type="number" min="0.01" step="any" required></label>
+        <label>Number of prepared vials<input id="vialCount" type="number" min="1" step="1" value="1" required></label>
+        <label>Dose unit
+          <select id="doseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select>
+        </label>
+        <label class="wide">Weekly dose pattern
+          <input id="dosePattern" required placeholder="Example: 3, 3, 4">
+          <small>One amount for each dose in the week. Use “1” for the same 1 mg dose every time.</small>
+        </label>
+        <label>Times taken per week<input id="timesPerWeek" type="number" min="1" max="21" step="1" required></label>
+        <label>Cycle length (weeks)<input id="cycleWeeks" type="number" min="1" max="104" step="1" required></label>
+        <label>Current week<input id="currentWeek" type="number" min="1" max="104" step="1" value="1" required></label>
+        <label>Already taken this week<input id="takenThisWeek" type="number" min="0" max="21" step="1" value="0" required></label>
+        <label class="wide">Timing or notes<input id="timing" placeholder="Example: AM fasted or before bed"></label>
+      </div>
+
+      <aside id="dosePreview" class="dose-preview"></aside>
+      <p class="disclaimer">Tracking tool only. It does not verify product identity, sterility, safety, interactions, or whether a protocol is medically appropriate.</p>
+      <div class="dialog-actions">
+        <button type="button" class="quiet" data-close-modal>Cancel</button>
+        <button type="submit" class="primary">Save protocol</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="cardTemplate">
+    <article class="stack-card">
+      <div class="card-top">
+        <div><p class="product-kicker">ACTIVE PROTOCOL</p><h3></h3><p class="timing"></p></div>
+        <button class="menu-button" aria-label="Protocol actions">•••</button>
+      </div>
+      <div class="warning" hidden></div>
+      <div class="dose-panel">
+        <p>NEXT DOSE</p><strong class="next-dose"></strong><span class="draw-units"></span>
+        <button class="taken-button">✓ Taken</button>
+      </div>
+      <div class="metrics">
+        <div><span>Vial remaining</span><strong class="vial-left"></strong></div>
+        <div><span>Cycle remaining</span><strong class="cycle-left"></strong></div>
+      </div>
+      <div class="progress-row"><span class="week-label"></span><span class="shot-label"></span></div>
+      <div class="progress-track"><div class="progress-fill"></div></div>
+      <div class="card-actions" hidden>
+        <button data-action="edit">Edit protocol</button>
+        <button data-action="new-vial">Reconstitute new vial</button>
+        <button data-action="undo">Undo last dose</button>
+        <button data-action="history">View history</button>
+        <button data-action="delete" class="danger">Remove</button>
+      </div>
+      <div class="history" hidden></div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
