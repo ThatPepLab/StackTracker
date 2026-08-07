@@ -60,10 +60,17 @@
         <label>Dose unit
           <select id="doseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select>
         </label>
+        <label>Dose amount means
+          <select id="doseBasis">
+            <option value="total">Total amount from vial</option>
+            <option value="each">Each component in blend</option>
+          </select>
+        </label>
         <label class="wide">Weekly dose pattern
           <input id="dosePattern" required placeholder="Example: 3, 3, 4">
           <small>One amount for each dose in the week. Use “1” for the same 1 mg dose every time.</small>
         </label>
+        <label id="componentCountLabel" hidden>Number of components<input id="componentCount" type="number" min="2" max="10" step="1" value="2"></label>
         <label>Times taken per week<input id="timesPerWeek" type="number" min="1" max="21" step="1" required></label>
         <label>Cycle length (weeks)<input id="cycleWeeks" type="number" min="1" max="104" step="1" required></label>
         <label>Current week<input id="currentWeek" type="number" min="1" max="104" step="1" value="1" required></label>
