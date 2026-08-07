@@ -119,6 +119,7 @@
         <button class="menu-button" aria-label="Protocol actions">•••</button>
       </div>
       <div class="warning" hidden></div>
+      <div class="end-status warning" hidden></div>
       <div class="dose-panel">
         <p class="dose-stage">NEXT DOSE</p><strong class="next-dose"></strong><span class="draw-units"></span>
         <button class="taken-button">✓ Taken</button>
@@ -135,12 +136,14 @@
         <button data-action="new-vial">Reconstitute new vial</button>
         <button data-action="undo">Undo last dose</button>
         <button data-action="history">View history</button>
+        <button data-action="end">End protocol</button>
+        <button data-action="resume" hidden>Resume protocol</button>
         <button data-action="delete" class="danger">Remove</button>
       </div>
       <div class="history" hidden></div>
     </article>
   </template>
 
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
