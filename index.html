@@ -55,8 +55,13 @@
           <datalist id="products"></datalist>
         </label>
 
-        <label>Vial strength (mg)<input id="vialMg" type="number" min="0.001" step="any" required></label>
-        <label>Reconstitution (mL)<input id="reconMl" type="number" min="0.01" step="any" required></label>
+        <label>Vial strength (mg)
+          <select id="vialMg" required></select>
+          <input id="customVialMg" type="number" min="0.001" step="any" placeholder="Enter custom mg" hidden>
+        </label>
+        <label>Reconstitution (mL)
+          <select id="reconMl"><option value="0.5">0.5 mL</option><option value="1">1 mL</option><option value="1.5">1.5 mL</option><option value="2">2 mL</option><option value="2.5">2.5 mL</option><option value="3">3 mL</option></select>
+        </label>
         <label>Number of prepared vials<input id="vialCount" type="number" min="1" step="1" value="1" required></label>
         <label>Dose unit
           <select id="doseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select>
@@ -129,6 +134,6 @@
     </article>
   </template>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
