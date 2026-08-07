@@ -11,6 +11,8 @@ const PRODUCTS = [
   'SLU-PP-322','SLU-PP-332','Snap-8','SS-31','Super Human Blend','Survodutide','TB-500 / Thymosin Beta-4','Tesamorelin','Tesamorelin + Ipamorelin','Testagen',
   'Testosterone Cypionate','Testosterone Enanthate','Thymalin','Thymalin / Thymulin','Thymosin Alpha-1','Tirzepatide','Vasoactive Intestinal Peptide (VIP)','Vesugen','Vilon','Vitamin B12'
 ];
+const PRODUCT_STRENGTHS = {"5-Amino-1MQ":[5,10,50],"ACE-031":[1],"Adamax":[5,10],"Adipotide":[2,5,10],"AHK-Cu":[20,50,100],"AICAR":[50,100],"Alprostadil":[20],"AOD-9604":[2,5,10],"ARA-290":[10,16,30,40,50],"BPC-157":[2,5,10,20],"BPC-157 + TB-500 (Wolverine)":[5,10,15,20,30],"Bronchogen":[20],"Cagrilintide":[2,5,10,20],"Cagrilintide + Semaglutide":[2.5,5,10,20],"Cardiogen":[10,20],"Cartalax":[20],"Cerebrolysin":[60],"Cerebroprotein Hydrolysate":[60],"CJC-1295 No DAC":[2,5,10],"CJC-1295 No DAC + Ipamorelin":[5,10,20],"CJC-1295 With DAC":[2,5,10],"Cortagen":[20],"Crystagen":[20],"Dermorphin":[5,10],"Dihexa":[10],"DSIP":[2,5,10,15],"Eloralintide":[5,10],"Epithalon":[10,25,50],"Follistatin":[1],"FOXO4-DRI":[2,5,10,16],"GDF-8":[1],"GHK-Cu":[50,100],"GHRP-2 Acetate":[5,10,15],"GHRP-6 Acetate":[5,10],"GLOW (BPC-157 + TB-500 + GHK-Cu)":[70,80],"Glutathione":[600,1500],"Gonadorelin Acetate":[2],"Hexarelin Acetate":[2,5,10],"HGH Fragment 176-191":[5,10,15],"Humanin":[10],"Hyaluronic Acid":[5],"IGF-1 LR3":[0.1,1],"IGF-DES":[0.1],"Ipamorelin":[2,5,10],"Kisspeptin-10":[5,10],"KLOW":[80],"KPV":[5,10,30],"L-Carnitine":[10,200,500,600,1200,5000],"LC120":[10],"LC216":[10],"Lemon Bottle":[10],"Lipo-C Fat Blaster":[526],"LL-37":[5,10],"Matrixyl":[10],"Mazdutide":[5,10,15,100],"Melanotan-1":[5,10],"Melanotan-2":[10],"Melatonin":[10,20],"MIC Blend":[10],"MGF":[2],"MK-677":[5],"MOTS-C":[5,10,15,20,30,40],"NA Semax Amidate":[30],"NAD+":[100,500,1000],"Oxytocin Acetate":[2,5,10],"PE-22-28":[5,10],"PEG-MGF":[2],"Pinealon":[5,10,20],"PNC-27":[5,10],"PT-141":[10],"Relaxation PM":[10],"Retatrutide":[5,10,15,20,30,40,50,60,100],"Retatrutide + Cagrilintide":[10],"Retatrutide + Tirzepatide":[60],"Selank":[5,10,30],"Selank + Semax":[10,20],"Semaglutide":[5,10,15,20,30,50],"Semax":[5,10,30],"Sermorelin Acetate":[2,5,10,15],"SLU-PP-322":[5],"SLU-PP-332":[5],"Snap-8":[10,20,100],"SS-31":[10,50],"Super Human Blend":[865],"Survodutide":[10],"TB-500 / Thymosin Beta-4":[2,5,10,20],"Tesamorelin":[2,5,10,15,20],"Tesamorelin + Ipamorelin":[10],"Testagen":[20],"Testosterone Cypionate":[250],"Testosterone Enanthate":[250],"Thymalin":[10],"Thymalin / Thymulin":[10,20],"Thymosin Alpha-1":[2,5,10],"Tirzepatide":[5,10,15,20,30,40,45,50,60,70,80,90,100,120],"Vasoactive Intestinal Peptide (VIP)":[5,10],"Vesugen":[10,20],"Vilon":[20],"Vitamin B12":[1,10]};
+const RECON_OPTIONS = [0.5,1,1.5,2,2.5,3];
 
 let state = loadState();
 const $ = (s, root=document) => root.querySelector(s);
@@ -49,6 +51,18 @@ function shotsInVial(item){
 }
 function currentWeek(item){ return Math.min(item.cycleWeeks, Math.floor(cycleTaken(item) / item.timesPerWeek) + 1); }
 function getItem(id){ return state.items.find(x => x.id === id); }
+function selectedVialMg(){ return $('#vialMg').value==='custom' ? Number($('#customVialMg').value) : Number($('#vialMg').value); }
+function updateStrengthOptions(preferred=null){
+  const strengths=PRODUCT_STRENGTHS[$('#product').value.trim()]||[];
+  const select=$('#vialMg'), current=preferred??selectedVialMg();
+  select.innerHTML=strengths.map(v=>`<option value="${v}">${nice(v)} mg</option>`).join('')+'<option value="custom">Other strength…</option>';
+  if(strengths.includes(Number(current))) select.value=String(Number(current));
+  else if(strengths.length && preferred===null) select.value=String(strengths[0]);
+  else select.value='custom';
+  $('#customVialMg').hidden=select.value!=='custom';
+  if(select.value==='custom'&&current) $('#customVialMg').value=current;
+  updatePreview();
+}
 
 function render(){
   const grid = $('#stackGrid'); grid.innerHTML = '';
@@ -118,15 +132,17 @@ function openDialog(item=null){
   form.reset(); $('#editId').value=item?.id||''; $('#dialogTitle').textContent=item?'Edit protocol':'Add to stack';
   $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2; $('#protocolType').value='fixed'; $('#starterWeeks').value=4; $('#increaseEveryWeeks').value=4;
   if(item){
-    $('#product').value=item.product; $('#vialMg').value=item.vialMg; $('#reconMl').value=item.reconMl; $('#vialCount').value=item.unopenedVials+1;
+    $('#product').value=item.product; updateStrengthOptions(item.vialMg); $('#reconMl').value=String(item.reconMl); $('#vialCount').value=item.unopenedVials+1;
     $('#doseUnit').value=item.doseUnit; $('#doseBasis').value=item.doseBasis||'total'; $('#componentCount').value=item.componentCount||2; $('#protocolType').value=item.protocolType||'fixed'; $('#starterDose').value=item.starterDose||''; $('#starterWeeks').value=item.starterWeeks||4; $('#doseIncrease').value=item.doseIncrease||''; $('#increaseEveryWeeks').value=item.increaseEveryWeeks||4; $('#dosePattern').value=item.dosePattern.join(', '); $('#timesPerWeek').value=item.timesPerWeek; $('#cycleWeeks').value=item.cycleWeeks;
     $('#currentWeek').value=currentWeek(item); $('#takenThisWeek').value=cycleTaken(item)%item.timesPerWeek; $('#timing').value=item.timing;
+  } else {
+    updateStrengthOptions();
   }
   updatePreview(); dialog.showModal();
 }
 function parsePattern(){ return $('#dosePattern').value.split(',').map(v=>Number(v.trim())).filter(v=>v>0); }
 function updatePreview(){
-  const vial=Number($('#vialMg').value), recon=Number($('#reconMl').value), pattern=parsePattern(), unit=$('#doseUnit').value, basis=$('#doseBasis').value, count=Number($('#componentCount').value)||2, isTitration=$('#protocolType').value==='titration';
+  const vial=selectedVialMg(), recon=Number($('#reconMl').value), pattern=parsePattern(), unit=$('#doseUnit').value, basis=$('#doseBasis').value, count=Number($('#componentCount').value)||2, isTitration=$('#protocolType').value==='titration';
   $('#componentCountLabel').hidden=basis!=='each';
   $('#titrationFields').hidden=!isTitration;
   $('#patternHelp').textContent=isTitration?'Enter the full maintenance dose. Titration will build to this amount.':'One amount for each dose in the week. Use one number for the same dose every time.';
@@ -151,7 +167,8 @@ form.addEventListener('submit',e=>{
   if(protocolType==='titration' && (!Number($('#starterDose').value)||!Number($('#starterWeeks').value)||!Number($('#doseIncrease').value)||!Number($('#increaseEveryWeeks').value))) return alert('Complete all titration schedule fields.');
   if(protocolType==='titration' && Number($('#starterDose').value)>=pattern[0]) return alert('Starter dose must be lower than the maintenance dose.');
   if(thisWeek>=times) return alert('Already taken this week must be less than the number taken per week.');
-  const id=$('#editId').value, existing=id?getItem(id):null, vialMg=Number($('#vialMg').value), vialCount=Number($('#vialCount').value);
+  const id=$('#editId').value, existing=id?getItem(id):null, vialMg=selectedVialMg(), vialCount=Number($('#vialCount').value);
+  if(!vialMg) return alert('Select or enter a vial strength.');
   const logs=existing?.logs??[], requestedCompleted=(week-1)*times+thisWeek;
   const values={id:id||uid(),product:$('#product').value.trim(),vialMg,reconMl:Number($('#reconMl').value),unopenedVials:Math.max(0,vialCount-1),doseUnit:$('#doseUnit').value,doseBasis:$('#doseBasis').value,componentCount:$('#doseBasis').value==='each'?Number($('#componentCount').value):1,protocolType,starterDose:protocolType==='titration'?Number($('#starterDose').value):null,starterWeeks:protocolType==='titration'?Number($('#starterWeeks').value):null,doseIncrease:protocolType==='titration'?Number($('#doseIncrease').value):null,increaseEveryWeeks:protocolType==='titration'?Number($('#increaseEveryWeeks').value):null,dosePattern:pattern,timesPerWeek:times,cycleWeeks:Number($('#cycleWeeks').value),startCompleted:Math.max(0,requestedCompleted-logs.length),timing:$('#timing').value.trim(),remainingMg:existing?.remainingMg??vialMg,logs};
   if(existing) Object.assign(existing,values); else state.items.push(values);
@@ -159,6 +176,10 @@ form.addEventListener('submit',e=>{
 });
 
 $('#products').innerHTML=PRODUCTS.map(p=>`<option value="${p}"></option>`).join('');
+$('#reconMl').innerHTML=RECON_OPTIONS.map(v=>`<option value="${v}">${v} mL</option>`).join('');
+$('#product').addEventListener('input',()=>{ if(PRODUCTS.includes($('#product').value.trim())) updateStrengthOptions(); });
+$('#product').addEventListener('change',()=>updateStrengthOptions());
+$('#vialMg').addEventListener('change',()=>{ $('#customVialMg').hidden=$('#vialMg').value!=='custom'; updatePreview(); });
 $('#addStackButton').addEventListener('click',()=>openDialog());
 document.querySelectorAll('[data-open-modal]').forEach(b=>b.addEventListener('click',()=>openDialog()));
 document.querySelectorAll('[data-close-modal]').forEach(b=>b.addEventListener('click',()=>dialog.close()));
