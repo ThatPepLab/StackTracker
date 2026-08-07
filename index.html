@@ -75,6 +75,9 @@
         <label>Protocol type
           <select id="protocolType"><option value="fixed">Fixed dose</option><option value="titration">Titration to maintenance</option></select>
         </label>
+        <label>Protocol duration
+          <select id="durationType"><option value="cycle">Planned cycle</option><option value="ongoing">Ongoing / no planned end</option></select>
+        </label>
         <fieldset class="wide titration-fields">
           <legend>People using this vial</legend>
           <label><input type="radio" name="sharedProtocol" value="1" checked> One person</label>
@@ -97,7 +100,7 @@
         </fieldset>
         <label id="componentCountLabel" hidden>Number of components<input id="componentCount" type="number" min="2" max="10" step="1" value="2"></label>
         <label>Times taken per week<input id="timesPerWeek" type="number" min="1" max="21" step="1" required></label>
-        <label>Cycle length (weeks)<input id="cycleWeeks" type="number" min="1" max="104" step="1" required></label>
+        <label id="cycleLengthLabel">Cycle length (weeks)<input id="cycleWeeks" type="number" min="1" max="104" step="1" required></label>
         <label>Current week<input id="currentWeek" type="number" min="1" max="104" step="1" value="1" required></label>
         <label>Already taken this week<input id="takenThisWeek" type="number" min="0" max="21" step="1" value="0" required></label>
         <label class="wide">Timing or notes<input id="timing" placeholder="Example: AM fasted or before bed"></label>
@@ -133,6 +136,7 @@
       <div class="progress-track"><div class="progress-fill"></div></div>
       <div class="card-actions" hidden>
         <button data-action="edit">Edit protocol</button>
+        <button data-action="add-vials">Add vials to inventory</button>
         <button data-action="new-vial">Reconstitute new vial</button>
         <button data-action="undo">Undo last dose</button>
         <button data-action="history">View history</button>
@@ -144,6 +148,21 @@
     </article>
   </template>
 
-  <script src="app.js?v=8"></script>
+  <dialog id="vialDialog">
+    <form id="vialForm" method="dialog">
+      <div class="dialog-head">
+        <div><p class="eyebrow">INVENTORY</p><h2>Add reordered vials</h2></div>
+        <button type="button" class="icon-button" data-close-vials aria-label="Close">×</button>
+      </div>
+      <input id="vialItemId" type="hidden">
+      <label>Number of new vials<input id="vialsToAdd" type="number" min="1" step="1" value="1" required></label>
+      <div class="dialog-actions vial-dialog-actions">
+        <button type="button" class="quiet" data-close-vials>Cancel</button>
+        <button type="submit" class="primary">Add vials</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js?v=9"></script>
 </body>
 </html>
