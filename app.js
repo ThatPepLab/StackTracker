@@ -1,5 +1,16 @@
 const STORAGE_KEY = 'tpl-personal-stack-v1';
-const PRODUCTS = ['Retatrutide','Tirzepatide','Semaglutide','Tesamorelin','MOTS-c','SS-31','NAD+','AOD-9604','5-Amino-1MQ','BPC-157','TB-500 / TB4','BPC-157 + TB-500','Ipamorelin','CJC-1295 no DAC','CJC-1295 no DAC + Ipamorelin','Tesamorelin + Ipamorelin','Semax','Selank','PT-141','GHK-Cu','AHK-Cu'];
+const PRODUCTS = [
+  '5-Amino-1MQ','ACE-031','Adamax','Adipotide','AHK-Cu','AICAR','Alprostadil','AOD-9604','ARA-290',
+  'BPC-157','BPC-157 + TB-500 (Wolverine)','Botulinum Toxin','Bronchogen','Cagrilintide','Cagrilintide + Semaglutide','Cardiogen','Cartalax','Cerebrolysin','Cerebroprotein Hydrolysate',
+  'CJC-1295 No DAC','CJC-1295 No DAC + Ipamorelin','CJC-1295 With DAC','Cortagen','Crystagen','Dermorphin','Dihexa','DSIP','Eloralintide','Epithalon','EPO',
+  'Follistatin','FOXO4-DRI','GDF-8','GHK-Cu','GHRP-2 Acetate','GHRP-6 Acetate','GLOW (BPC-157 + TB-500 + GHK-Cu)','Glutathione','Gonadorelin Acetate',
+  'HCG','Healthy Hair Skin Nails Blend','Hexarelin Acetate','HGH 191AA','HGH Fragment 176-191','HMG','Humanin','Hyaluronic Acid','IGF-1 LR3','IGF-DES','Insulin','Ipamorelin',
+  'Kisspeptin-10','KLOW','KPV','L-Carnitine','LC120','LC216','Lemon Bottle','Lipo-B','Lipo-C','Lipo-C Fat Blaster','Lipo-C Plus','Lipo Lab PPC Solution','LL-37','Matrixyl','Mazdutide','Melanotan-1','Melanotan-2','Melatonin','MIC Blend',
+  'MGF','MK-677','MOTS-C','NA Semax Amidate','NAD+','Oxytocin Acetate','PE-22-28','PEG-MGF','Pinealon','PNC-27','PT-141','Relaxation PM',
+  'Retatrutide','Retatrutide + Cagrilintide','Retatrutide + Tirzepatide','Selank','Selank + Semax','Semaglutide','Semax','Sermorelin Acetate',
+  'SLU-PP-322','SLU-PP-332','Snap-8','SS-31','Super Human Blend','Survodutide','TB-500 / Thymosin Beta-4','Tesamorelin','Tesamorelin + Ipamorelin','Testagen',
+  'Testosterone Cypionate','Testosterone Enanthate','Thymalin','Thymalin / Thymulin','Thymosin Alpha-1','Tirzepatide','Vasoactive Intestinal Peptide (VIP)','Vesugen','Vilon','Vitamin B12'
+];
 
 let state = loadState();
 const $ = (s, root=document) => root.querySelector(s);
