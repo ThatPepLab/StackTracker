@@ -30,6 +30,7 @@ function totalDoseMg(amount, unit, doseBasis='total', componentCount=1){
   return doseToMg(amount,unit) * (doseBasis === 'each' ? componentCount : 1);
 }
 function nice(n, max=3){ return Number(n.toFixed(max)).toString(); }
+function displayDate(value){ return new Date(value).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'}); }
 function dosesTotal(item){ return item.cycleWeeks * item.timesPerWeek; }
 function cycleTaken(item){ return Math.min(item.startCompleted + item.logs.length, dosesTotal(item)); }
 function peopleCount(item){ return Number(item.peopleCount)||1; }
@@ -79,9 +80,9 @@ function render(){
   const grid = $('#stackGrid'); grid.innerHTML = '';
   $('#emptyState').hidden = state.items.length > 0;
   grid.hidden = state.items.length === 0;
-  const totalLeft = state.items.reduce((n,i)=>n+(Math.max(0,dosesTotal(i)-cycleTaken(i))*peopleCount(i)),0);
-  const low = state.items.filter(i=>(shotsInVial(i)<=1||inventoryStatus(i).additionalVials>0) && cycleTaken(i)<dosesTotal(i)).length;
-  $('#summary').innerHTML = `<div class="summary-card"><span>Active protocols</span><strong>${state.items.length}</strong></div><div class="summary-card"><span>Cycle doses remaining</span><strong>${totalLeft}</strong></div><div class="summary-card"><span>Vials needing attention</span><strong>${low}</strong></div>`;
+  const active=state.items.filter(i=>!i.endedAt), totalLeft = active.reduce((n,i)=>n+(Math.max(0,dosesTotal(i)-cycleTaken(i))*peopleCount(i)),0);
+  const low = active.filter(i=>(shotsInVial(i)<=1||inventoryStatus(i).additionalVials>0) && cycleTaken(i)<dosesTotal(i)).length;
+  $('#summary').innerHTML = `<div class="summary-card"><span>Active protocols</span><strong>${active.length}</strong></div><div class="summary-card"><span>Cycle doses remaining</span><strong>${totalLeft}</strong></div><div class="summary-card"><span>Vials needing attention</span><strong>${low}</strong></div>`;
   state.items.forEach(item => grid.append(renderCard(item)));
 }
 
@@ -110,7 +111,13 @@ function renderCard(item){
   if (remaining && inventory.additionalVials>0){ warning.hidden=false; warning.textContent=`Inventory is short by ${inventory.additionalVials} vial${inventory.additionalVials===1?'':'s'} for the remaining protocol.`; }
   if (remaining && shots === 1){ warning.hidden=false; warning.textContent=`One ${people===2?'shared session':'shot'} remains in this vial. Reconstitute the next vial now.`; }
   if (remaining && shots === 0){ warning.hidden=false; warning.classList.add('urgent'); warning.textContent=`Not enough remains for the next ${people===2?'shared session':'full dose'}. Reconstitute a new vial.`; }
-  const takenBtn = $('.taken-button',card); takenBtn.disabled = !remaining || item.remainingMg + 1e-9 < doseMg;
+  const endStatus=$('.end-status',card), endButton=card.querySelector('[data-action="end"]'), resumeButton=card.querySelector('[data-action="resume"]');
+  if(item.endedAt){
+    endStatus.hidden=false; endStatus.textContent=`Protocol ended ${displayDate(item.endedAt)} · Six-week break ends ${displayDate(item.breakEndsAt)}`;
+    $('.dose-stage',card).textContent='PROTOCOL ENDED'; $('.next-dose',card).textContent=`Resume after ${displayDate(item.breakEndsAt)}`; $('.draw-units',card).textContent='Dose history and inventory are preserved';
+    endButton.hidden=true; resumeButton.hidden=false;
+  }
+  const takenBtn = $('.taken-button',card); takenBtn.disabled = !!item.endedAt || !remaining || item.remainingMg + 1e-9 < doseMg;
   takenBtn.addEventListener('click',()=>takeDose(item.id));
   $('.menu-button',card).addEventListener('click',()=>{ const a=$('.card-actions',card); a.hidden=!a.hidden; });
   $('.card-actions',card).addEventListener('click',e=>{ const action=e.target.dataset.action; if(action) handleAction(action,item.id,card); });
@@ -119,6 +126,7 @@ function renderCard(item){
 
 function takeDose(id){
   const item=getItem(id), amount=nextDose(item), mg=totalDoseMg(amount,item.doseUnit,item.doseBasis,item.componentCount)*peopleCount(item);
+  if(item.endedAt) return;
   if (item.remainingMg + 1e-9 < mg) return;
   item.remainingMg=Math.max(0,item.remainingMg-mg);
   item.logs.push({id:uid(),at:new Date().toISOString(),amount,unit:item.doseUnit,mg,people:peopleCount(item)});
@@ -128,6 +136,12 @@ function takeDose(id){
 function handleAction(action,id,card){
   const item=getItem(id);
   if(action==='edit') openDialog(item);
+  if(action==='end' && confirm(`End ${item.product} now and begin a six-week break?`)){
+    const ended=new Date(), breakEnd=new Date(ended); breakEnd.setDate(breakEnd.getDate()+42); item.endedAt=ended.toISOString(); item.breakEndsAt=breakEnd.toISOString(); saveState();
+  }
+  if(action==='resume'){
+    item.endedAt=null; item.breakEndsAt=null; saveState();
+  }
   if(action==='new-vial'){
     if(item.unopenedVials>0){ item.unopenedVials--; item.remainingMg=item.vialMg; saveState(); }
     else if(confirm('No prepared reserve vial is recorded. Add one newly reconstituted vial?')){ item.remainingMg=item.vialMg; saveState(); }
