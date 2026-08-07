@@ -136,7 +136,7 @@ function takeDose(id){
 function handleAction(action,id,card){
   const item=getItem(id);
   if(action==='edit') openDialog(item);
-  if(action==='end' && confirm(`End ${item.product} now and begin a six-week break?`)){
+  if(action==='end'){
     const ended=new Date(), breakEnd=new Date(ended); breakEnd.setDate(breakEnd.getDate()+42); item.endedAt=ended.toISOString(); item.breakEndsAt=breakEnd.toISOString(); saveState();
   }
   if(action==='resume'){
