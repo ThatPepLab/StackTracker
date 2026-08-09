@@ -168,28 +168,46 @@ function handleAction(action,id,card){
 
 function openDialog(item=null){
   form.reset(); $('#editId').value=item?.id||''; $('#dialogTitle').textContent=item?'Edit protocol':'Add to stack';
-  $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2; $('#protocolType').value='fixed'; $('#durationType').value='cycle'; $('#starterWeeks').value=4; $('#increaseEveryWeeks').value=4; form.querySelector('input[name="sharedProtocol"][value="1"]').checked=true;
+  $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2; $('#protocolType').value='fixed'; $('#durationType').value='cycle'; $('#dosePatternChoice').value='same'; $('#starterWeeks').value=4; $('#increaseEveryWeeks').value=4; form.querySelector('input[name="sharedProtocol"][value="1"]').checked=true;
   if(item){
     $('#product').value=item.product; updateStrengthOptions(item.vialMg); $('#reconMl').value=String(item.reconMl); $('#vialCount').value=(Number(item.unopenedVials)||0)+1;
-    $('#doseUnit').value=item.doseUnit; $('#doseBasis').value=item.doseBasis||'total'; $('#componentCount').value=item.componentCount||2; $('#protocolType').value=item.protocolType||'fixed'; $('#durationType').value=item.durationType||'cycle'; $('#starterDose').value=item.starterDose||''; $('#starterWeeks').value=item.starterWeeks||4; $('#doseIncrease').value=item.doseIncrease||''; $('#increaseEveryWeeks').value=item.increaseEveryWeeks||4; $('#dosePattern').value=item.dosePattern.join(', '); $('#timesPerWeek').value=item.timesPerWeek; $('#cycleWeeks').value=item.cycleWeeks||1;
+    $('#doseUnit').value=item.doseUnit; $('#doseBasis').value=item.doseBasis||'total'; $('#componentCount').value=item.componentCount||2; $('#protocolType').value=item.protocolType||'fixed'; $('#durationType').value=item.durationType||'cycle'; $('#starterDose').value=item.starterDose||''; $('#starterWeeks').value=item.starterWeeks||4; $('#doseIncrease').value=item.doseIncrease||''; $('#increaseEveryWeeks').value=item.increaseEveryWeeks||4;
+    const hasDifferentDoses=item.dosePattern.length>1;
+    $('#dosePatternChoice').value=hasDifferentDoses?'different':'same';
+    $('#dosePattern').value=hasDifferentDoses?'':item.dosePattern[0];
+    $('#differentDosePattern').value=hasDifferentDoses?item.dosePattern.join(', '):'';
+    $('#timesPerWeek').value=String(item.timesPerWeek); $('#cycleWeeks').value=item.cycleWeeks||1;
     form.querySelector(`input[name="sharedProtocol"][value="${peopleCount(item)}"]`).checked=true;
     $('#currentWeek').value=currentWeek(item); $('#takenThisWeek').value=cycleTaken(item)%item.timesPerWeek; $('#timing').value=item.timing;
   } else {
     updateStrengthOptions();
   }
-  updateDurationFields(); updatePreview(); dialog.showModal();
+  updateDurationFields(); updatePatternFields(); updatePreview(); dialog.showModal();
 }
-function parsePattern(){ return $('#dosePattern').value.split(',').map(v=>Number(v.trim())).filter(v=>v>0); }
+function parsePattern(){
+  const source=$('#dosePatternChoice').value==='different' ? $('#differentDosePattern').value : $('#dosePattern').value;
+  return source.split(',').map(v=>Number(v.trim())).filter(v=>v>0);
+}
+function updatePatternFields(){
+  const isTitration=$('#protocolType').value==='titration';
+  if(isTitration) $('#dosePatternChoice').value='same';
+  $('#dosePatternChoice').disabled=isTitration;
+  const different=$('#dosePatternChoice').value==='different';
+  $('#sameDoseLabel').hidden=different;
+  $('#differentDoseLabel').hidden=!different;
+  $('#dosePattern').required=!different;
+  $('#differentDosePattern').required=different;
+}
 function updateDurationFields(){
   const ongoing=$('#durationType').value==='ongoing';
   $('#cycleLengthLabel').hidden=ongoing;
   $('#cycleWeeks').required=!ongoing;
 }
 function updatePreview(){
+  updatePatternFields();
   const vial=selectedVialMg(), recon=Number($('#reconMl').value), pattern=parsePattern(), unit=$('#doseUnit').value, basis=$('#doseBasis').value, count=Number($('#componentCount').value)||2, isTitration=$('#protocolType').value==='titration', ongoing=$('#durationType').value==='ongoing';
   $('#componentCountLabel').hidden=basis!=='each';
   $('#titrationFields').hidden=!isTitration;
-  $('#patternHelp').textContent=isTitration?'Enter the full maintenance dose. Titration will build to this amount.':'One amount for each dose in the week. Use one number for the same dose every time.';
   if(!vial||!recon||!pattern.length){ $('#dosePreview').textContent='Enter vial, reconstitution and dose details to calculate the draw.'; return; }
   const conc=vial/recon, draws=pattern.map(d=>nice(totalDoseMg(d,unit,basis,count)/conc*100,1));
   const explanation=basis==='each'?` (${nice(pattern[0])} ${unit} × ${count} components)`:'';

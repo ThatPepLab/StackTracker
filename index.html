@@ -84,9 +84,18 @@
           <label><input type="radio" name="sharedProtocol" value="2"> Shared protocol — spouse takes the same dose</label>
           <small>A shared protocol shows one dose event but removes two doses from the vial and doubles total protocol requirements.</small>
         </fieldset>
-        <label class="wide">Weekly dose pattern
-          <input id="dosePattern" required placeholder="Example: 3, 3, 4">
-          <small id="patternHelp">One amount for each dose in the week. Use one number for the same dose every time.</small>
+        <label>Dose pattern
+          <select id="dosePatternChoice">
+            <option value="same">Same dose every time</option>
+            <option value="different">Different doses during the week</option>
+          </select>
+        </label>
+        <label id="sameDoseLabel">Dose each time
+          <input id="dosePattern" type="number" min="0.001" step="any" required>
+        </label>
+        <label id="differentDoseLabel" class="wide" hidden>Doses in scheduled order
+          <input id="differentDosePattern" placeholder="Example: 3, 3, 4">
+          <small id="patternHelp">Enter one amount for each scheduled dose, separated by commas.</small>
         </label>
         <fieldset id="titrationFields" class="wide titration-fields" hidden>
           <legend>Titration schedule</legend>
@@ -96,10 +105,35 @@
             <label>Increase by<input id="doseIncrease" type="number" min="0.001" step="any"></label>
             <label>Increase every (weeks)<input id="increaseEveryWeeks" type="number" min="1" max="52" step="1" value="4"></label>
           </div>
-          <small>The weekly dose pattern above is the full maintenance dose. Once reached, the card displays only the maintenance dose.</small>
+          <small>The dose above is the full maintenance dose. Once reached, the card displays only the maintenance dose.</small>
         </fieldset>
         <label id="componentCountLabel" hidden>Number of components<input id="componentCount" type="number" min="2" max="10" step="1" value="2"></label>
-        <label>Times taken per week<input id="timesPerWeek" type="number" min="1" max="21" step="1" required></label>
+        <label>Weekly schedule
+          <select id="timesPerWeek" required>
+            <option value="">Choose a schedule</option>
+            <option value="1">Once weekly</option>
+            <option value="2">Twice weekly</option>
+            <option value="3">3 times weekly</option>
+            <option value="4">4 times weekly</option>
+            <option value="5">5 times weekly</option>
+            <option value="6">6 times weekly</option>
+            <option value="7">Daily</option>
+            <option value="8">8 times weekly</option>
+            <option value="9">9 times weekly</option>
+            <option value="10">10 times weekly</option>
+            <option value="11">11 times weekly</option>
+            <option value="12">12 times weekly</option>
+            <option value="13">13 times weekly</option>
+            <option value="14">Twice daily</option>
+            <option value="15">15 times weekly</option>
+            <option value="16">16 times weekly</option>
+            <option value="17">17 times weekly</option>
+            <option value="18">18 times weekly</option>
+            <option value="19">19 times weekly</option>
+            <option value="20">20 times weekly</option>
+            <option value="21">3 times daily</option>
+          </select>
+        </label>
         <label id="cycleLengthLabel">Cycle length (weeks)<input id="cycleWeeks" type="number" min="1" max="104" step="1" required></label>
         <label>Current week<input id="currentWeek" type="number" min="1" max="104" step="1" value="1" required></label>
         <label>Already taken this week<input id="takenThisWeek" type="number" min="0" max="21" step="1" value="0" required></label>
@@ -163,6 +197,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
