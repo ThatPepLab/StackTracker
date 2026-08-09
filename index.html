@@ -90,10 +90,10 @@
             <option value="different">Different doses during the week</option>
           </select>
         </label>
-        <label id="sameDoseLabel">Dose each time
+        <label id="sameDoseLabel">Dose each time (<span class="dose-unit-label">mg</span>)
           <input id="dosePattern" type="number" min="0.001" step="any" required>
         </label>
-        <label id="differentDoseLabel" class="wide" hidden>Doses in scheduled order
+        <label id="differentDoseLabel" class="wide" hidden>Doses in scheduled order (<span class="dose-unit-label">mg</span>)
           <input id="differentDosePattern" placeholder="Example: 3, 3, 4">
           <small id="patternHelp">Enter one amount for each scheduled dose, separated by commas.</small>
         </label>
@@ -197,6 +197,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

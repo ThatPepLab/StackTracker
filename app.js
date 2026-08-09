@@ -206,6 +206,7 @@ function updateDurationFields(){
 function updatePreview(){
   updatePatternFields();
   const vial=selectedVialMg(), recon=Number($('#reconMl').value), pattern=parsePattern(), unit=$('#doseUnit').value, basis=$('#doseBasis').value, count=Number($('#componentCount').value)||2, isTitration=$('#protocolType').value==='titration', ongoing=$('#durationType').value==='ongoing';
+  document.querySelectorAll('.dose-unit-label').forEach(label=>label.textContent=unit);
   $('#componentCountLabel').hidden=basis!=='each';
   $('#titrationFields').hidden=!isTitration;
   if(!vial||!recon||!pattern.length){ $('#dosePreview').textContent='Enter vial, reconstitution and dose details to calculate the draw.'; return; }
