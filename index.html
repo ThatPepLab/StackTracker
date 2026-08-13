@@ -154,6 +154,10 @@
         <label id="cycleLengthLabel">Cycle length (weeks)<input id="cycleWeeks" type="number" min="1" max="104" step="1" required></label>
         <label>Current week<input id="currentWeek" type="number" min="1" max="104" step="1" value="1" required></label>
         <label>Already taken this week<input id="takenThisWeek" type="number" min="0" max="21" step="1" value="0" required></label>
+        <label class="wide">Next scheduled dose (date &amp; normal time)
+          <input id="nextDoseAt" type="datetime-local">
+          <small>The overdue warning appears one hour after this time. Leave blank to turn dose-time warnings off.</small>
+        </label>
         <label class="wide">Timing or notes<input id="timing" placeholder="Example: AM fasted or before bed"></label>
       </div>
 
@@ -172,11 +176,13 @@
         <div><p class="product-kicker">ACTIVE PROTOCOL</p><h3></h3><p class="timing"></p></div>
         <button class="menu-button" aria-label="Protocol actions">•••</button>
       </div>
+      <div class="overdue-warning" hidden role="alert"></div>
       <div class="warning" hidden></div>
       <div class="end-status warning" hidden></div>
       <div class="dose-panel">
-        <p class="dose-stage">NEXT DOSE</p><strong class="next-dose"></strong><span class="draw-units"></span>
+        <p class="dose-stage">NEXT DOSE</p><strong class="next-dose"></strong><span class="draw-units"></span><span class="next-time" hidden></span>
         <button class="taken-button">✓ Taken</button>
+        <div class="taken-time" hidden><span class="last-taken"></span><button type="button" class="adjust-time-button">Adjust time</button></div>
       </div>
       <div class="metrics">
         <div><span>Vial remaining</span><strong class="vial-left"></strong></div>
@@ -214,6 +220,22 @@
     </form>
   </dialog>
 
+  <dialog id="timeDialog">
+    <form id="timeForm" method="dialog">
+      <div class="dialog-head">
+        <div><p class="eyebrow">DOSE HISTORY</p><h2>Adjust taken time</h2></div>
+        <button type="button" class="icon-button" data-close-time aria-label="Close">×</button>
+      </div>
+      <input id="timeItemId" type="hidden">
+      <input id="timeLogId" type="hidden">
+      <label>Date and time taken<input id="takenAt" type="datetime-local" required></label>
+      <div class="dialog-actions vial-dialog-actions">
+        <button type="button" class="quiet" data-close-time>Cancel</button>
+        <button type="submit" class="primary">Save time</button>
+      </div>
+    </form>
+  </dialog>
+
   <script>
     const STACK_ACCESS_HASH='e963591b5683ed6df68569059ea585c33c451df57307ddbdd828a539e5620e89';
     const accessGate=document.getElementById('accessGate'),accessCard=document.getElementById('accessCard'),accessPassword=document.getElementById('accessPassword'),accessButton=document.getElementById('accessButton'),accessError=document.getElementById('accessError');
@@ -222,6 +244,6 @@
     if(sessionStorage.getItem('tplStackTrackerAccess')==='granted')unlockStackTracker();
     accessCard.addEventListener('submit',async event=>{event.preventDefault();accessError.textContent='';accessButton.disabled=true;const valid=(await stackAccessDigest(accessPassword.value))===STACK_ACCESS_HASH;if(valid){sessionStorage.setItem('tplStackTrackerAccess','granted');unlockStackTracker()}else{accessError.textContent='Incorrect password.';accessPassword.select()}accessButton.disabled=false});
   </script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
