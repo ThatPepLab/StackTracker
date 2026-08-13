@@ -174,6 +174,7 @@ function handleAction(action,id,card){
 }
 
 function openDialog(item=null){
+  clearFormValidation();
   form.reset(); $('#editId').value=item?.id||''; $('#dialogTitle').textContent=item?'Edit protocol':'Add to stack';
   $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2; $('#protocolType').value='fixed'; $('#durationType').value='cycle'; $('#dosePatternChoice').value='same'; $('#starterWeeks').value=4; $('#increaseEveryWeeks').value=4; form.querySelector('input[name="sharedProtocol"][value="1"]').checked=true;
   if(item){
@@ -233,20 +234,43 @@ function updatePreview(){
   $('#dosePreview').innerHTML=`<strong>${nice(conc)} mg/mL</strong> · Maintenance draw: <strong>${draws.join(' / ')} units</strong>${explanation} per person.${titration}${coverage}`;
 }
 
+let validationHighlightTimer=null, nativeInvalidHandled=false;
+function clearFormValidation(){
+  clearTimeout(validationHighlightTimer);document.querySelectorAll('.needs-attention').forEach(element=>element.classList.remove('needs-attention'));
+  const banner=$('#formValidation');if(banner){banner.hidden=true;banner.textContent=''}
+}
+function showFormValidation(target,message){
+  clearFormValidation();const banner=$('#formValidation');banner.textContent=message;banner.hidden=false;
+  const section=target?.closest?.('#titrationFields')||target?.closest?.('label,fieldset')||target;if(section)section.classList.add('needs-attention');
+  requestAnimationFrame(()=>{(section||target||banner).scrollIntoView({behavior:'smooth',block:'center'});target?.focus?.({preventScroll:true})});
+  validationHighlightTimer=setTimeout(()=>section?.classList.remove('needs-attention'),4500);
+}
+function requiredFieldName(target){
+  const label=target.closest?.('label'),text=label?.childNodes?.[0]?.textContent?.trim();return text||target.getAttribute('aria-label')||target.name||target.id||'required field';
+}
+form.addEventListener('invalid',event=>{
+  event.preventDefault();if(nativeInvalidHandled)return;nativeInvalidHandled=true;const target=event.target;showFormValidation(target,`Please complete “${requiredFieldName(target)}” before saving.`);setTimeout(()=>{nativeInvalidHandled=false},0);
+},true);
+form.addEventListener('input',event=>{if(event.target.matches('input,select,textarea'))clearFormValidation()});
+
 form.addEventListener('submit',e=>{
   e.preventDefault();
   const pattern=parsePattern(), times=Number($('#timesPerWeek').value), week=Number($('#currentWeek').value), thisWeek=Number($('#takenThisWeek').value);
-  if(!pattern.length) return alert('Enter at least one valid dose.');
-  if(pattern.length!==1 && pattern.length!==times) return alert('Use one repeating dose, or enter one dose amount for each weekly dose.');
+  const patternTarget=$('#dosePatternChoice').value==='different'?$('#differentDosePattern'):$('#dosePattern');
+  if(!pattern.length) return showFormValidation(patternTarget,'Enter at least one valid dose amount before saving.');
+  if(pattern.length!==1 && pattern.length!==times) return showFormValidation($('#differentDosePattern'),'Enter one repeating dose, or one dose amount for every scheduled dose during the week.');
   const protocolType=$('#protocolType').value;
   const ongoing=$('#durationType').value==='ongoing';
-  if(protocolType==='titration' && pattern.length!==1) return alert('Titration protocols require one repeating maintenance dose.');
-  if(protocolType==='titration' && (!Number($('#starterDose').value)||!Number($('#starterWeeks').value)||!Number($('#doseIncrease').value)||!Number($('#increaseEveryWeeks').value))) return alert('Complete all titration schedule fields.');
-  if(protocolType==='titration' && Number($('#starterDose').value)>=pattern[0]) return alert('Starter dose must be lower than the maintenance dose.');
-  if(thisWeek>=times) return alert('Already taken this week must be less than the number taken per week.');
+  if(protocolType==='titration' && pattern.length!==1) return showFormValidation($('#titrationFields'),'Titration protocols require one repeating target maintenance dose.');
+  if(protocolType==='titration'){
+    const missing=['starterDose','starterWeeks','doseIncrease','increaseEveryWeeks'].map(id=>$('#'+id)).find(input=>!Number(input.value));
+    if(missing)return showFormValidation(missing,'Complete every field in the highlighted Titration Schedule section.');
+  }
+  if(protocolType==='titration' && Number($('#starterDose').value)>=pattern[0]) return showFormValidation($('#starterDose'),'Starter dose must be lower than the target maintenance dose entered above.');
+  if(thisWeek>=times) return showFormValidation($('#takenThisWeek'),'Already taken this week must be less than the selected weekly schedule.');
   const id=$('#editId').value, existing=id?getItem(id):null, vialMg=selectedVialMg(), vialCount=Number($('#vialCount').value);
-  if(!vialMg) return alert('Select or enter a vial strength.');
-  if(Number($('#reconMl').value)===5&&!isFiveMlNasalProduct()) return alert('The 5 mL reconstitution option is available only for Selank and Semax.');
+  if(!vialMg) return showFormValidation($('#vialMg').value==='custom'?$('#customVialMg'):$('#vialMg'),'Select or enter a valid vial strength.');
+  if(Number($('#reconMl').value)===5&&!isFiveMlNasalProduct()) return showFormValidation($('#reconMl'),'The 5 mL reconstitution option is available only for Selank and Semax.');
   const logs=existing?.logs??[], requestedCompleted=(week-1)*times+thisWeek;
   const values={id:id||uid(),product:$('#product').value.trim(),vialMg,reconMl:Number($('#reconMl').value),unopenedVials:Math.max(0,vialCount-1),doseUnit:$('#doseUnit').value,doseBasis:$('#doseBasis').value,componentCount:$('#doseBasis').value==='each'?Number($('#componentCount').value):1,peopleCount:Number(form.querySelector('input[name="sharedProtocol"]:checked').value),protocolType,durationType:ongoing?'ongoing':'cycle',starterDose:protocolType==='titration'?Number($('#starterDose').value):null,starterWeeks:protocolType==='titration'?Number($('#starterWeeks').value):null,doseIncrease:protocolType==='titration'?Number($('#doseIncrease').value):null,increaseEveryWeeks:protocolType==='titration'?Number($('#increaseEveryWeeks').value):null,dosePattern:pattern,timesPerWeek:times,cycleWeeks:ongoing?1:Number($('#cycleWeeks').value),startCompleted:Math.max(0,requestedCompleted-logs.length),timing:$('#timing').value.trim(),remainingMg:existing?.remainingMg??vialMg,logs};
   if(existing) Object.assign(existing,values); else state.items.push(values);
