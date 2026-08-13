@@ -6,9 +6,21 @@
   <meta name="theme-color" content="#071b2f">
   <title>Personal Stack Tracker</title>
   <link rel="stylesheet" href="styles.css">
-  <style>.titration-fields{border:1px solid #dce2e7;border-radius:10px;padding:14px;margin:0}.titration-fields legend{padding:0 7px;font-size:12px;font-weight:900;color:#f47b20;letter-spacing:.08em;text-transform:uppercase}.titration-fields[hidden]{display:none}.titration-fields label:has(input[type=radio]){display:flex;align-items:center;gap:8px;margin:7px 0}.titration-fields input[type=radio]{display:inline-block;width:auto;margin:0}</style>
+  <style>.titration-fields{border:1px solid #dce2e7;border-radius:10px;padding:14px;margin:0}.titration-fields legend{padding:0 7px;font-size:12px;font-weight:900;color:#f47b20;letter-spacing:.08em;text-transform:uppercase}.titration-fields[hidden]{display:none}.titration-fields label:has(input[type=radio]){display:flex;align-items:center;gap:8px;margin:7px 0}.titration-fields input[type=radio]{display:inline-block;width:auto;margin:0}.tracker-locked>header,.tracker-locked>main,.tracker-locked>dialog,.tracker-locked>template{display:none!important}.access-gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(145deg,#06162f,#0b2b55 58%,#eb6b25)}.access-gate[hidden]{display:none}.access-card{width:min(430px,100%);padding:30px;border-top:7px solid #f47b20;border-radius:18px;background:#fff;box-shadow:0 24px 70px #0008;color:#12213f}.access-card .access-mark{display:grid;width:48px;height:48px;place-items:center;border-radius:12px;background:#071b2f;color:#fff;font-size:25px;font-weight:950}.access-card .eyebrow{margin:18px 0 5px;color:#f47b20}.access-card h1{margin:0;color:#071b2f;font-size:28px}.access-card p:not(.eyebrow):not(.access-error){color:#647087;line-height:1.5}.access-card label{display:block;margin-top:18px;color:#12213f;font-weight:800}.access-card input{width:100%;margin-top:7px;padding:13px;border:2px solid #bfc9da;border-radius:9px;background:#fff;color:#111;font:inherit}.access-card button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:9px;background:#f47b20;color:#fff;font:inherit;font-weight:900;cursor:pointer}.access-card button:focus,.access-card input:focus{outline:3px solid #ffc49b;outline-offset:2px}.access-error{min-height:21px;margin:10px 0 0;color:#a33;font-weight:800}</style>
 </head>
-<body>
+<body class="tracker-locked">
+  <section id="accessGate" class="access-gate" aria-labelledby="accessTitle">
+    <form id="accessCard" class="access-card">
+      <div class="access-mark" aria-hidden="true">S</div>
+      <p class="eyebrow">STACKTRACKER ACCESS</p>
+      <h1 id="accessTitle">Enter Password</h1>
+      <p>Enter the shared testing password to open the personal stack tracker.</p>
+      <label for="accessPassword">Password</label>
+      <input id="accessPassword" type="password" autocomplete="current-password" autofocus required>
+      <button id="accessButton" type="submit">Open StackTracker</button>
+      <p id="accessError" class="access-error" role="alert"></p>
+    </form>
+  </section>
   <header class="hero">
     <div>
       <p class="eyebrow">THAT PEP LAB</p>
@@ -197,6 +209,14 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=11"></script>
+  <script>
+    const STACK_ACCESS_HASH='e963591b5683ed6df68569059ea585c33c451df57307ddbdd828a539e5620e89';
+    const accessGate=document.getElementById('accessGate'),accessCard=document.getElementById('accessCard'),accessPassword=document.getElementById('accessPassword'),accessButton=document.getElementById('accessButton'),accessError=document.getElementById('accessError');
+    async function stackAccessDigest(value){const bytes=new TextEncoder().encode(value),hash=await crypto.subtle.digest('SHA-256',bytes);return[...new Uint8Array(hash)].map(byte=>byte.toString(16).padStart(2,'0')).join('')}
+    function unlockStackTracker(){document.body.classList.remove('tracker-locked');accessGate.hidden=true;accessPassword.value=''}
+    if(sessionStorage.getItem('tplStackTrackerAccess')==='granted')unlockStackTracker();
+    accessCard.addEventListener('submit',async event=>{event.preventDefault();accessError.textContent='';accessButton.disabled=true;const valid=(await stackAccessDigest(accessPassword.value))===STACK_ACCESS_HASH;if(valid){sessionStorage.setItem('tplStackTrackerAccess','granted');unlockStackTracker()}else{accessError.textContent='Incorrect password.';accessPassword.select()}accessButton.disabled=false});
+  </script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
