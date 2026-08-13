@@ -21,6 +21,8 @@ const dialog = $('#stackDialog');
 const form = $('#stackForm');
 const vialDialog = $('#vialDialog');
 const vialForm = $('#vialForm');
+const timeDialog = $('#timeDialog');
+const timeForm = $('#timeForm');
 
 function loadState(){
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {items:[]}; }
@@ -34,6 +36,22 @@ function totalDoseMg(amount, unit, doseBasis='total', componentCount=1){
 }
 function nice(n, max=3){ return Number(n.toFixed(max)).toString(); }
 function displayDate(value){ return new Date(value).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'}); }
+function displayDateTime(value){ return new Date(value).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}); }
+function toLocalDateTimeInput(value){
+  if(!value)return '';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return '';
+  const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,16);
+}
+function doseIntervalMs(item){ return 7*24*60*60*1000/Math.max(1,Number(item.timesPerWeek)||1); }
+function advanceNextDose(item,takenAt){
+  const takenMs=new Date(takenAt).getTime(), interval=doseIntervalMs(item);
+  let dueMs=new Date(item.nextDoseAt||takenMs).getTime();
+  if(!Number.isFinite(dueMs)) dueMs=takenMs;
+  do { dueMs+=interval; } while(dueMs<=takenMs);
+  item.nextDoseAt=new Date(dueMs).toISOString();
+}
 function isOngoing(item){ return item.durationType === 'ongoing'; }
 function dosesTotal(item){ return isOngoing(item) ? Infinity : item.cycleWeeks * item.timesPerWeek; }
 function cycleTaken(item){ const taken=item.startCompleted+item.logs.length; return isOngoing(item)?taken:Math.min(taken,dosesTotal(item)); }
@@ -113,12 +131,18 @@ function renderCard(item){
   const doseSuffix=item.doseBasis==='each'?` each × ${item.componentCount}`:'';
   $('.next-dose',card).textContent = remaining ? `${nice(dose)} ${item.doseUnit}${doseSuffix}` : 'Cycle complete';
   $('.draw-units',card).textContent = remaining ? `${nice(units,1)} units per person${people===2?' · shared ×2':''}` : 'No scheduled doses remaining';
+  if(item.nextDoseAt&&remaining&&!item.endedAt){ const nextTime=$('.next-time',card);nextTime.hidden=false;nextTime.textContent=`Scheduled: ${displayDateTime(item.nextDoseAt)}`; }
   $('.vial-left',card).textContent = `${nice(item.remainingMg)} mg · ~${shots} ${people===2?'shared session':'shot'}${shots===1?'':'s'}`;
   $('.cycle-left',card).textContent = ongoing?'Ongoing · no end date':people===2?`${remaining*2} doses · ${remaining} shared sessions`:`${remaining} of ${total} shots`;
   $('.coverage',card).textContent = ongoing?`${inventory.onHandVials} vial${inventory.onHandVials===1?'':'s'} on hand · reorder at 2`:inventory.additionalVials?`${inventory.onHandVials} on hand · need ${inventory.additionalVials} more`:`${inventory.onHandVials} on hand · protocol covered`;
   $('.week-label',card).textContent = ongoing?`Week ${currentWeek(item)} · ongoing`:`Week ${currentWeek(item)} of ${item.cycleWeeks}`;
   $('.shot-label',card).textContent = `${taken} taken`;
   $('.progress-fill',card).style.width = ongoing?'100%':`${total?taken/total*100:0}%`;
+  const overdueWarning=$('.overdue-warning',card), dueAt=item.nextDoseAt?new Date(item.nextDoseAt).getTime():NaN;
+  if(!item.endedAt&&remaining&&Number.isFinite(dueAt)&&Date.now()>dueAt+60*60*1000){
+    overdueWarning.hidden=false;
+    overdueWarning.textContent=`Dose overdue — normal time was ${displayDateTime(item.nextDoseAt)}. Mark it Taken to clear this warning.`;
+  }
   const warning = $('.warning',card);
   if (remaining && inventory.additionalVials>0){ warning.hidden=false; warning.textContent=`Inventory is short by ${inventory.additionalVials} vial${inventory.additionalVials===1?'':'s'} for the remaining protocol.`; }
   if (remaining && shots === 1){ warning.hidden=false; warning.textContent=`One ${people===2?'shared session':'shot'} remains in this vial. Reconstitute the next vial now.`; }
@@ -133,6 +157,12 @@ function renderCard(item){
   }
   const takenBtn = $('.taken-button',card); takenBtn.disabled = !!item.endedAt || !remaining || item.remainingMg + 1e-9 < doseMg;
   takenBtn.addEventListener('click',()=>takeDose(item.id));
+  const lastLog=item.logs[item.logs.length-1], takenTime=$('.taken-time',card);
+  if(lastLog){
+    takenTime.hidden=false;
+    $('.last-taken',card).textContent=`Last taken: ${displayDateTime(lastLog.at)}`;
+    $('.adjust-time-button',card).addEventListener('click',()=>openTimeDialog(item.id,lastLog.id));
+  }
   $('.menu-button',card).addEventListener('click',()=>{ const a=$('.card-actions',card); a.hidden=!a.hidden; });
   $('.card-actions',card).addEventListener('click',e=>{ const action=e.target.dataset.action; if(action) handleAction(action,item.id,card); });
   return card;
@@ -143,8 +173,19 @@ function takeDose(id){
   if(item.endedAt) return;
   if (item.remainingMg + 1e-9 < mg) return;
   item.remainingMg=Math.max(0,item.remainingMg-mg);
-  item.logs.push({id:uid(),at:new Date().toISOString(),amount,unit:item.doseUnit,mg,people:peopleCount(item)});
+  const at=new Date().toISOString();
+  item.logs.push({id:uid(),at,amount,unit:item.doseUnit,mg,people:peopleCount(item)});
+  advanceNextDose(item,at);
   saveState();
+}
+
+function openTimeDialog(itemId,logId){
+  const item=getItem(itemId), log=item?.logs.find(entry=>entry.id===logId);
+  if(!log)return;
+  $('#timeItemId').value=itemId;
+  $('#timeLogId').value=logId;
+  $('#takenAt').value=toLocalDateTimeInput(log.at);
+  timeDialog.showModal();
 }
 
 function handleAction(action,id,card){
@@ -169,14 +210,15 @@ function handleAction(action,id,card){
   if(action==='delete' && confirm(`Remove ${item.product} and its local history?`)){ state.items=state.items.filter(x=>x.id!==id); saveState(); }
   if(action==='history'){
     const box=$('.history',card); box.hidden=!box.hidden;
-    box.innerHTML=item.logs.length ? item.logs.slice().reverse().map(l=>`<div class="history-item"><span>${new Date(l.at).toLocaleString()}</span><strong>${nice(l.amount)} ${l.unit}${(l.people||1)===2?' each · shared':''}</strong></div>`).join('') : '<p class="history-empty">No doses recorded in this app yet.</p>';
+    box.innerHTML=item.logs.length ? item.logs.slice().reverse().map(l=>`<div class="history-item"><span>${displayDateTime(l.at)}</span><strong>${nice(l.amount)} ${l.unit}${(l.people||1)===2?' each · shared':''}</strong><button type="button" class="history-time-button" data-log-id="${l.id}">Adjust time</button></div>`).join('') : '<p class="history-empty">No doses recorded in this app yet.</p>';
+    box.querySelectorAll('[data-log-id]').forEach(button=>button.addEventListener('click',()=>openTimeDialog(item.id,button.dataset.logId)));
   }
 }
 
 function openDialog(item=null){
   clearFormValidation();
   form.reset(); $('#editId').value=item?.id||''; $('#dialogTitle').textContent=item?'Edit protocol':'Add to stack';
-  $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2; $('#protocolType').value='fixed'; $('#durationType').value='cycle'; $('#dosePatternChoice').value='same'; $('#starterWeeks').value=4; $('#increaseEveryWeeks').value=4; form.querySelector('input[name="sharedProtocol"][value="1"]').checked=true;
+  $('#vialCount').value=1; $('#currentWeek').value=1; $('#takenThisWeek').value=0; $('#doseUnit').value='mg'; $('#doseBasis').value='total'; $('#componentCount').value=2; $('#protocolType').value='fixed'; $('#durationType').value='cycle'; $('#dosePatternChoice').value='same'; $('#starterWeeks').value=4; $('#increaseEveryWeeks').value=4; $('#nextDoseAt').value=''; form.querySelector('input[name="sharedProtocol"][value="1"]').checked=true;
   if(item){
     $('#product').value=item.product; updateStrengthOptions(item.vialMg); updateReconOptions(item.reconMl); $('#vialCount').value=(Number(item.unopenedVials)||0)+1;
     $('#doseUnit').value=item.doseUnit; $('#doseBasis').value=item.doseBasis||'total'; $('#componentCount').value=item.componentCount||2; $('#protocolType').value=item.protocolType||'fixed'; $('#durationType').value=item.durationType||'cycle'; $('#starterDose').value=item.starterDose||''; $('#starterWeeks').value=item.starterWeeks||4; $('#doseIncrease').value=item.doseIncrease||''; $('#increaseEveryWeeks').value=item.increaseEveryWeeks||4;
@@ -186,7 +228,7 @@ function openDialog(item=null){
     $('#differentDosePattern').value=hasDifferentDoses?item.dosePattern.join(', '):'';
     $('#timesPerWeek').value=String(item.timesPerWeek); $('#cycleWeeks').value=item.cycleWeeks||1;
     form.querySelector(`input[name="sharedProtocol"][value="${peopleCount(item)}"]`).checked=true;
-    $('#currentWeek').value=currentWeek(item); $('#takenThisWeek').value=cycleTaken(item)%item.timesPerWeek; $('#timing').value=item.timing;
+    $('#currentWeek').value=currentWeek(item); $('#takenThisWeek').value=cycleTaken(item)%item.timesPerWeek; $('#nextDoseAt').value=toLocalDateTimeInput(item.nextDoseAt); $('#timing').value=item.timing;
   } else {
     updateStrengthOptions(); updateReconOptions();
   }
@@ -272,7 +314,8 @@ form.addEventListener('submit',e=>{
   if(!vialMg) return showFormValidation($('#vialMg').value==='custom'?$('#customVialMg'):$('#vialMg'),'Select or enter a valid vial strength.');
   if(Number($('#reconMl').value)===5&&!isFiveMlNasalProduct()) return showFormValidation($('#reconMl'),'The 5 mL reconstitution option is available only for Selank and Semax.');
   const logs=existing?.logs??[], requestedCompleted=(week-1)*times+thisWeek;
-  const values={id:id||uid(),product:$('#product').value.trim(),vialMg,reconMl:Number($('#reconMl').value),unopenedVials:Math.max(0,vialCount-1),doseUnit:$('#doseUnit').value,doseBasis:$('#doseBasis').value,componentCount:$('#doseBasis').value==='each'?Number($('#componentCount').value):1,peopleCount:Number(form.querySelector('input[name="sharedProtocol"]:checked').value),protocolType,durationType:ongoing?'ongoing':'cycle',starterDose:protocolType==='titration'?Number($('#starterDose').value):null,starterWeeks:protocolType==='titration'?Number($('#starterWeeks').value):null,doseIncrease:protocolType==='titration'?Number($('#doseIncrease').value):null,increaseEveryWeeks:protocolType==='titration'?Number($('#increaseEveryWeeks').value):null,dosePattern:pattern,timesPerWeek:times,cycleWeeks:ongoing?1:Number($('#cycleWeeks').value),startCompleted:Math.max(0,requestedCompleted-logs.length),timing:$('#timing').value.trim(),remainingMg:existing?.remainingMg??vialMg,logs};
+  const enteredNextDose=$('#nextDoseAt').value;
+  const values={id:id||uid(),product:$('#product').value.trim(),vialMg,reconMl:Number($('#reconMl').value),unopenedVials:Math.max(0,vialCount-1),doseUnit:$('#doseUnit').value,doseBasis:$('#doseBasis').value,componentCount:$('#doseBasis').value==='each'?Number($('#componentCount').value):1,peopleCount:Number(form.querySelector('input[name="sharedProtocol"]:checked').value),protocolType,durationType:ongoing?'ongoing':'cycle',starterDose:protocolType==='titration'?Number($('#starterDose').value):null,starterWeeks:protocolType==='titration'?Number($('#starterWeeks').value):null,doseIncrease:protocolType==='titration'?Number($('#doseIncrease').value):null,increaseEveryWeeks:protocolType==='titration'?Number($('#increaseEveryWeeks').value):null,dosePattern:pattern,timesPerWeek:times,cycleWeeks:ongoing?1:Number($('#cycleWeeks').value),startCompleted:Math.max(0,requestedCompleted-logs.length),nextDoseAt:enteredNextDose?new Date(enteredNextDose).toISOString():null,timing:$('#timing').value.trim(),remainingMg:existing?.remainingMg??vialMg,logs};
   if(existing) Object.assign(existing,values); else state.items.push(values);
   saveState(); dialog.close();
 });
@@ -295,6 +338,16 @@ vialForm.addEventListener('submit',e=>{
   saveState(); vialDialog.close();
 });
 document.querySelectorAll('[data-close-vials]').forEach(b=>b.addEventListener('click',()=>vialDialog.close()));
+timeForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const item=getItem($('#timeItemId').value), log=item?.logs.find(entry=>entry.id===$('#timeLogId').value), entered=$('#takenAt').value;
+  if(!item||!log||!entered)return;
+  log.at=new Date(entered).toISOString();
+  if(item.logs[item.logs.length-1]===log)item.nextDoseAt=new Date(new Date(log.at).getTime()+doseIntervalMs(item)).toISOString();
+  saveState();
+  timeDialog.close();
+});
+document.querySelectorAll('[data-close-time]').forEach(b=>b.addEventListener('click',()=>timeDialog.close()));
 $('#exportButton').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}), a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=`personal-stack-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
@@ -305,3 +358,4 @@ $('#importInput').addEventListener('change',async e=>{
   e.target.value='';
 });
 render();
+setInterval(render,60000);
