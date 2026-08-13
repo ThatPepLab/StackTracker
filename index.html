@@ -217,6 +217,6 @@
     if(sessionStorage.getItem('tplStackTrackerAccess')==='granted')unlockStackTracker();
     accessCard.addEventListener('submit',async event=>{event.preventDefault();accessError.textContent='';accessButton.disabled=true;const valid=(await stackAccessDigest(accessPassword.value))===STACK_ACCESS_HASH;if(valid){sessionStorage.setItem('tplStackTrackerAccess','granted');unlockStackTracker()}else{accessError.textContent='Incorrect password.';accessPassword.select()}accessButton.disabled=false});
   </script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>
